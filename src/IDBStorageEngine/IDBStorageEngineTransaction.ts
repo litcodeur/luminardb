@@ -20,9 +20,9 @@ export class IDBStorageEngineTransaction implements StorageEngineTransaction {
   #onErrorCallbacks: Set<(error: Event) => void> = new Set();
 
   constructor(
-    protected idb: IDBPDatabase,
-    protected collectionNames: Array<string>,
-    protected mode: StorageEngineTransactionMode
+    idb: IDBPDatabase,
+    collectionNames: Array<string>,
+    mode: StorageEngineTransactionMode
   ) {
     this.#tx = idb.transaction(collectionNames, mode);
 

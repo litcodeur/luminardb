@@ -16,7 +16,7 @@ export class QueryEngine {
   #cache = new Map<string, Query<any>>();
   #initializationPromise: Promise<void> | null = null;
 
-  private queue = new Map<
+  #queue = new Map<
     string,
     {
       option: QueryOption;
@@ -26,13 +26,13 @@ export class QueryEngine {
     }
   >();
 
-  protected timer: number | null = null;
+  timeout: number | null = null;
 
-  protected async processQueue() {
+  async #processQueue() {
     try {
       const tx = this.#storageEngine.startTransaction("ALL", "readonly");
 
-      for (let [_, { option, resolve }] of this.queue) {
+      for (let [_, { option, resolve }] of this.#queue) {
         if (isQueryOptionDocumentQueryOption(option)) {
           const { collectionName, key } = option;
           const result = await tx.queryByKey(collectionName, key);
@@ -54,13 +54,13 @@ export class QueryEngine {
         resolve(result);
       }
     } catch (error) {
-      for (let [_, { reject }] of this.queue) {
+      for (let [_, { reject }] of this.#queue) {
         reject(error as any);
       }
     } finally {
-      this.queue.clear();
-      clearTimeout(this.timer!);
-      this.timer = null;
+      this.#queue.clear();
+      clearTimeout(this.timeout!);
+      this.timeout = null;
     }
   }
 
@@ -93,20 +93,20 @@ export class QueryEngine {
 
     const hash = this.#hashQueryOption(option);
 
-    if (this.queue.has(hash)) {
-      const { promise } = this.queue.get(hash)!;
+    if (this.#queue.has(hash)) {
+      const { promise } = this.#queue.get(hash)!;
       return promise;
     }
 
-    this.queue.set(hash, {
+    this.#queue.set(hash, {
       option,
       resolve,
       reject,
       promise,
     });
 
-    if (!this.timer) {
-      this.timer = setTimeout(() => this.processQueue(), 5);
+    if (!this.timeout) {
+      this.timeout = setTimeout(() => this.#processQueue(), 5);
     }
 
     return promise;

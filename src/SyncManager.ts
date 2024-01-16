@@ -132,7 +132,7 @@ export class SyncManager<
     return mutationsToPush[0];
   }
 
-  private getMutationDetailsFromArgs(mutationName: string) {
+  #getMutationDetailsFromArgs(mutationName: string) {
     if (!this.#mutators) {
       throw new Error(
         `Mutation ${mutationName} not found, please initialize the database with the correct mutators`
@@ -247,9 +247,7 @@ export class SyncManager<
   }
 
   async #handleMutationWithRemoteResolver(
-    mutationDetails: ReturnType<
-      ReturnType<typeof this.getMutationDetailsFromArgs>
-    >,
+    mutationDetails: ReturnType<Mutators[string]>,
     mutation: DatabaseMutation
   ) {
     const remoteResolver = mutationDetails.remoteResolver!;
@@ -305,7 +303,7 @@ export class SyncManager<
   }
 
   async #handleMutation(mutation: DatabaseMutation) {
-    const mutationFn = this.getMutationDetailsFromArgs(mutation.mutationName);
+    const mutationFn = this.#getMutationDetailsFromArgs(mutation.mutationName);
 
     const mutationDetails = mutationFn(mutation.mutationArgs);
 

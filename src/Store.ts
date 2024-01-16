@@ -1,23 +1,23 @@
 import { Subscribable } from "./Subscribeable";
 
 export class Store<T> extends Subscribable<(s: T) => void> {
-  private data: T;
+  #data: T;
 
   constructor(initialData: T) {
     super();
-    this.data = initialData;
+    this.#data = initialData;
   }
 
   get() {
-    return this.data;
+    return this.#data;
   }
 
   set(data: Partial<T> | ((data: T) => Partial<T>)) {
     if (typeof data === "function") {
-      this.data = { ...this.data, ...(data as any)(this.data) };
+      this.#data = { ...this.#data, ...(data as any)(this.#data) };
     } else {
-      this.data = { ...this.data, ...data };
+      this.#data = { ...this.#data, ...data };
     }
-    this.notifyListeners(this.data);
+    this.notifyListeners(this.#data);
   }
 }
