@@ -106,6 +106,7 @@ export class EnhancedStorageEngineTransaction {
     }
 
     const sortedChanges = mutations
+      .filter((m) => m.isCompleted)
       .flatMap((m) => m.changes)
       .sort(function (a, b) {
         const [aMutationId, aTimestamp] = a.id.split("-");
@@ -866,12 +867,7 @@ export class EnhancedStorageEngineTransaction {
         continue;
       }
 
-      const isEventDeletingARecordButHasAPendingUpdate =
-        event.action === "DELETE" && pendingDocumentState.state === "UPDATED";
-
-      if (isEventDeletingARecordButHasAPendingUpdate) {
-        eventsToPush.push(event);
-      }
+      eventsToPush.push(event);
     }
 
     for (let event of eventsToPush) {
