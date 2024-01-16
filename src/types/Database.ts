@@ -15,11 +15,12 @@ export type DatabaseConfig<
   initialize?: boolean;
 };
 
-export type MakeMutators<TMutators extends Mutators<any> = Mutators<any>> = {
-  [K in keyof TMutators]: (
-    ...args: Parameters<TMutators[K]>
-  ) => Promise<ReturnType<ReturnType<TMutators[K]>["localResolver"]>>;
-};
+export type DatabaseMutators<TMutators extends Mutators<any> = Mutators<any>> =
+  {
+    [K in keyof TMutators]: (
+      ...args: Parameters<TMutators[K]>
+    ) => Promise<ReturnType<ReturnType<TMutators[K]>["localResolver"]>>;
+  };
 
 export type DatabaseCDCEvents<
   TDatabaseSchema extends AnyDatabaseSchema = AnyDatabaseSchema

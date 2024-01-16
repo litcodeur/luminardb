@@ -18,7 +18,7 @@ import {
   AnyDatabaseSchema,
   DatabaseCDCEvents,
   DatabaseConfig,
-  MakeMutators,
+  DatabaseMutators,
 } from "./types/Database";
 import { Mutators } from "./types/Mutators";
 import { StorageEngine } from "./types/StorageEngine";
@@ -33,17 +33,17 @@ export class Database<
   #queryEngine: QueryEngine;
   #syncManager: SyncManager<TDatabaseSchema, TMutators>;
   #schema: TDatabaseSchema;
-  #localMutators: MakeMutators<TMutators>;
+  #databaseMutators: DatabaseMutators<TMutators>;
 
   #initializationPromise: Promise<void> | null = null;
   #isInitialized = false;
 
-  #constructLocalMutators(mutators?: TMutators): MakeMutators<TMutators> {
+  #constructLocalMutators(mutators?: TMutators): DatabaseMutators<TMutators> {
     if (!mutators) {
-      return {} as MakeMutators<TMutators>;
+      return {} as DatabaseMutators<TMutators>;
     }
 
-    let localMutators = {} as MakeMutators<TMutators>;
+    let localMutators = {} as DatabaseMutators<TMutators>;
 
     Object.keys(mutators).forEach((key) => {
       const typedKey = key as keyof typeof localMutators;
@@ -132,7 +132,7 @@ export class Database<
   constructor(config: DatabaseConfig<TDatabaseSchema, TMutators>) {
     this.#storageEngine = config.storageEngine;
     this.#schema = config.storageEngine.schema;
-    this.#localMutators = this.#constructLocalMutators(config.mutators);
+    this.#databaseMutators = this.#constructLocalMutators(config.mutators);
     this.#syncManager = new SyncManager({
       storageEngine: this.#storageEngine,
       puller: config.puller,
@@ -153,8 +153,8 @@ export class Database<
     return this.#isInitialized;
   }
 
-  get mutate(): Prettify<MakeMutators<TMutators>> {
-    return this.#localMutators;
+  get mutate(): Prettify<DatabaseMutators<TMutators>> {
+    return this.#databaseMutators;
   }
 
   collection<
