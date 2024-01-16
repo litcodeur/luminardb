@@ -22,7 +22,7 @@ import {
 } from "./types/Database";
 import { Mutators } from "./types/Mutators";
 import { StorageEngine } from "./types/StorageEngine";
-import { MaybePromise, Prettify } from "./types/types";
+import { Prettify } from "./types/types";
 import { ONE_SECOND_IN_MS, resolver } from "./utils";
 
 export class Database<
@@ -173,12 +173,53 @@ export class Database<
     return this.#syncManager.pull();
   }
 
+  #batchReadTimeout: number | null = null;
+  #batchReadQueue: Array<{
+    queryFn: (tx: ReadTransaction<TDatabaseSchema>) => Promise<any>;
+    resolve: (res: any) => void;
+    reject: (err: any) => void;
+  }> = [];
+
+  async #processBatchReadQueue() {
+    const tx = new ReadTransaction(
+      this.#storageEngine.startTransaction("ALL", "readonly"),
+      this.#schema
+    );
+
+    while (this.#batchReadQueue.length > 0) {
+      const { queryFn, resolve, reject } = this.#batchReadQueue.shift()!;
+      try {
+        const result = await queryFn(tx);
+        resolve(result);
+      } catch (error) {
+        reject(error);
+      }
+    }
+
+    if (this.#batchReadTimeout) {
+      clearTimeout(this.#batchReadTimeout);
+    }
+    this.#batchReadTimeout = null;
+  }
+
   async batchRead<T>(
-    queryFn: (tx: ReadTransaction<TDatabaseSchema>) => MaybePromise<T>
+    queryFn: (tx: ReadTransaction<TDatabaseSchema>) => Promise<T>
   ) {
-    const tx = await this.#storageEngine.startTransaction("ALL", "readonly");
-    const readTransaction = new ReadTransaction(tx, this.#schema);
-    return await queryFn(readTransaction);
+    const { promise, resolve, reject } = resolver<T>();
+
+    this.#batchReadQueue.push({
+      queryFn,
+      resolve,
+      reject,
+    });
+
+    if (!this.#batchReadTimeout) {
+      this.#batchReadTimeout = setTimeout(() => {
+        void this.#processBatchReadQueue();
+      }, 5);
+    }
+
+    return promise;
   }
 
   #convertStorageEngineCDCEventsToDatabaseCDCEvents(
