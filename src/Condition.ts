@@ -6,12 +6,12 @@ const ComparatorList = ["eq", "gt", "lt", "gte", "lte"] as const;
 
 export type ConditionComparators = (typeof ComparatorList)[number];
 
-export class Condition {
+export class Condition<T extends Collection<any, any> = Collection<any, any>> {
   #key!: string;
   #value!: PrimitiveType;
   #comparator!: ConditionComparators;
 
-  constructor(option: FilterOption<Collection<any, any>>) {
+  constructor(option: FilterOption<T>) {
     const where = option.where;
 
     if (!where) {

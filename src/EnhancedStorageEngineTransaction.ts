@@ -300,7 +300,7 @@ export class EnhancedStorageEngineTransaction {
       result.set(key, value);
     });
 
-    pendingDocumentStateMap.forEach((pendingDocumentState, key) => {
+    for (let [key, pendingDocumentState] of pendingDocumentStateMap) {
       if (
         (pendingDocumentState.state === "INSERTED" &&
           condition.doesDataSatisfyCondition(pendingDocumentState.value)) ||
@@ -308,7 +308,7 @@ export class EnhancedStorageEngineTransaction {
           condition.doesDataSatisfyCondition(pendingDocumentState.value))
       ) {
         result.set(key, pendingDocumentState.value as TValue);
-        return;
+        continue;
       }
 
       if (
@@ -316,14 +316,22 @@ export class EnhancedStorageEngineTransaction {
         condition.doesDataSatisfyCondition(pendingDocumentState.value)
       ) {
         result.delete(key);
-        return;
+        continue;
       }
 
       if (pendingDocumentState.state === "UPDATED") {
-        const existingDocumentData = result.get(key) as TValue;
+        let existingDocumentData = result.get(key) as TValue;
+
+        if (
+          !existingDocumentData &&
+          condition.doesDataSatisfyCondition(pendingDocumentState.delta)
+        ) {
+          const queryResult = await this.queryByKey(collectionName, key);
+          existingDocumentData = queryResult.get(key) as TValue;
+        }
 
         if (!existingDocumentData) {
-          return;
+          continue;
         }
 
         const mergedValue = {
@@ -335,7 +343,7 @@ export class EnhancedStorageEngineTransaction {
           result.set(key, mergedValue as TValue);
         }
       }
-    });
+    }
 
     return result;
   }
@@ -355,10 +363,10 @@ export class EnhancedStorageEngineTransaction {
       result.set(key, value);
     });
 
-    pendingDocumentStateMap.forEach((pendingDocumentState, key) => {
+    for (let [key, pendingDocumentState] of pendingDocumentStateMap) {
       if (pendingDocumentState.state === "INSERTED") {
         result.set(key, pendingDocumentState.value as TValue);
-        return;
+        continue;
       }
 
       if (pendingDocumentState.state === "UPSERTED") {
@@ -368,22 +376,27 @@ export class EnhancedStorageEngineTransaction {
             ...existingDocumentData,
             ...pendingDocumentState.delta,
           });
-          return;
+          continue;
         }
         result.set(key, pendingDocumentState.value as TValue);
-        return;
+        continue;
       }
 
       if (pendingDocumentState.state === "DELETED") {
         result.delete(key);
-        return;
+        continue;
       }
 
       if (pendingDocumentState.state === "UPDATED") {
-        const existingDocumentData = result.get(key) as TValue;
+        let existingDocumentData = result.get(key) as TValue;
 
         if (!existingDocumentData) {
-          return;
+          const queryResult = await this.queryByKey(collectionName, key);
+          existingDocumentData = queryResult.get(key) as TValue;
+        }
+
+        if (!existingDocumentData) {
+          continue;
         }
 
         const mergedValue = {
@@ -392,9 +405,9 @@ export class EnhancedStorageEngineTransaction {
         };
 
         result.set(key, mergedValue as TValue);
-        return;
+        continue;
       }
-    });
+    }
 
     return result;
   }
