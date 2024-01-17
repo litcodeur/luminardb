@@ -532,7 +532,7 @@ export class EnhancedStorageEngineTransaction {
 
       const changes = typedValue.changes;
 
-      await this.#handlePushCDC(changes);
+      await this.#handlePushCDC(changes, true);
     }
 
     const valueToInsert = { ...currentValue, ...value };
@@ -746,7 +746,10 @@ export class EnhancedStorageEngineTransaction {
     }
   }
 
-  async #handlePushCDC(event: Array<CDCEvent> | CDCEvent) {
+  async #handlePushCDC(
+    event: Array<CDCEvent> | CDCEvent,
+    isOptimistic = false
+  ) {
     const events = Array.isArray(event) ? event : [event];
 
     const eventsToPush: Array<CDCEvent> = [];
@@ -822,12 +825,17 @@ export class EnhancedStorageEngineTransaction {
           });
           continue;
         }
+        continue;
       }
 
       if (event.action === "UPDATE") {
         if (pendingDocumentState.state === "INSERTED") {
-          const preUpdateValue = event.postUpdateValue;
-          const delta = pendingDocumentState.value;
+          const preUpdateValue = isOptimistic
+            ? pendingDocumentState.value
+            : event.postUpdateValue;
+
+          const delta = isOptimistic ? event.delta : pendingDocumentState.value;
+
           const postUpdateValue = { ...preUpdateValue, ...delta };
 
           eventsToPush.push({
@@ -846,8 +854,14 @@ export class EnhancedStorageEngineTransaction {
           pendingDocumentState.state === "UPDATED" ||
           pendingDocumentState.state === "UPSERTED"
         ) {
-          const preUpdateValue = event.postUpdateValue;
-          const delta = { ...event.delta, ...pendingDocumentState.delta };
+          const preUpdateValue = isOptimistic
+            ? pendingDocumentState.value
+            : event.postUpdateValue;
+
+          const delta = isOptimistic
+            ? { ...pendingDocumentState.delta, ...event.delta }
+            : { ...event.delta, ...pendingDocumentState.delta };
+
           const postUpdateValue = { ...preUpdateValue, ...delta };
 
           const modifiedEvent = {
