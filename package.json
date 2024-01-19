@@ -21,15 +21,21 @@
     "lint": "tsc",
     "build": "tsup",
     "dev": "tsup --watch",
-    "release": "pnpm run lint && pnpm run build && changeset publish"
+    "release": "pnpm run lint && pnpm run test && pnpm run build && changeset publish",
+    "test:watch": "vitest",
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "litcodeur",
   "license": "MIT",
   "devDependencies": {
     "@changesets/cli": "2.27.1",
+    "@faker-js/faker": "8.3.1",
+    "@vitest/coverage-v8": "1.2.0",
+    "fake-indexeddb": "5.0.2",
     "tsup": "8.0.1",
-    "typescript": "5.3.3"
+    "typescript": "5.3.3",
+    "vitest": "1.2.0"
   },
   "dependencies": {
     "idb": "8.0.0"
