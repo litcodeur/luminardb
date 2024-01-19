@@ -26,7 +26,7 @@ export class QueryEngine {
     }
   >();
 
-  timeout: number | null = null;
+  timeout: ReturnType<typeof setTimeout> | null = null;
 
   async #processQueue() {
     try {

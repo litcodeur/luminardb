@@ -173,7 +173,7 @@ export class Database<
     return this.#syncManager.pull();
   }
 
-  #batchReadTimeout: number | null = null;
+  #batchReadTimeout: ReturnType<typeof setTimeout> | null = null;
   #batchReadQueue: Array<{
     queryFn: (tx: ReadTransaction<TDatabaseSchema>) => Promise<any>;
     resolve: (res: any) => void;

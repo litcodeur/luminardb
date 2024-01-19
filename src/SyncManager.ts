@@ -44,7 +44,7 @@ export class SyncManager<
     isInitialized: false,
   };
 
-  #interval: number | null = null;
+  #interval: ReturnType<typeof setInterval> | null = null;
 
   #startPullInterval() {
     if (!this.#puller) return;
