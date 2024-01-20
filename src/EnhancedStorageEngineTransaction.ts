@@ -28,7 +28,7 @@ export type PendingDocumentState =
       key: StorageEngineValidKey;
     }
   | {
-      state: "UPSERTED";
+      state: "UPDATE_POST_INSERT";
       delta: StorableJSONObject;
       key: StorageEngineValidKey;
       value: StorableJSONObject;
@@ -155,6 +155,7 @@ export class EnhancedStorageEngineTransaction {
         existingDocumentState.state === "DELETED";
 
       if (isDocumentInPendingDeleteState) {
+        // TODO: warn the user that something might be wrong as they tried to perform an update on a deleted document.
         continue;
       }
 
@@ -164,7 +165,7 @@ export class EnhancedStorageEngineTransaction {
       if (isDocumentInPendingInsertState) {
         const mergedValue = { ...existingDocumentState.value, ...change.delta };
         documentStateMap.set(change.key, {
-          state: "UPSERTED",
+          state: "UPDATE_POST_INSERT",
           key: change.key,
           delta: change.delta,
           value: mergedValue,
@@ -172,10 +173,10 @@ export class EnhancedStorageEngineTransaction {
         continue;
       }
 
-      const isDocumentInPendingUpsertState =
-        existingDocumentState.state === "UPSERTED";
+      const isDocumentInPendingUpdatePostInsertState =
+        existingDocumentState.state === "UPDATE_POST_INSERT";
 
-      if (isDocumentInPendingUpsertState) {
+      if (isDocumentInPendingUpdatePostInsertState) {
         const mergedValue = {
           ...existingDocumentState.value,
           ...change.delta,
@@ -183,7 +184,7 @@ export class EnhancedStorageEngineTransaction {
         const mergedDelta = { ...existingDocumentState.delta, ...change.delta };
 
         documentStateMap.set(change.key, {
-          state: "UPSERTED",
+          state: "UPDATE_POST_INSERT",
           key: change.key,
           delta: mergedDelta,
           value: mergedValue,
@@ -252,7 +253,7 @@ export class EnhancedStorageEngineTransaction {
 
     if (
       pendingDocumentState.state === "INSERTED" ||
-      pendingDocumentState.state === "UPSERTED"
+      pendingDocumentState.state === "UPDATE_POST_INSERT"
     ) {
       storageEngineResult.set(key, pendingDocumentState.value as TValue);
       return storageEngineResult;
@@ -304,7 +305,7 @@ export class EnhancedStorageEngineTransaction {
       if (
         (pendingDocumentState.state === "INSERTED" &&
           condition.doesDataSatisfyCondition(pendingDocumentState.value)) ||
-        (pendingDocumentState.state === "UPSERTED" &&
+        (pendingDocumentState.state === "UPDATE_POST_INSERT" &&
           condition.doesDataSatisfyCondition(pendingDocumentState.value))
       ) {
         result.set(key, pendingDocumentState.value as TValue);
@@ -369,7 +370,7 @@ export class EnhancedStorageEngineTransaction {
         continue;
       }
 
-      if (pendingDocumentState.state === "UPSERTED") {
+      if (pendingDocumentState.state === "UPDATE_POST_INSERT") {
         const existingDocumentData = result.get(key) as TValue;
         if (existingDocumentData) {
           result.set(key, {
@@ -797,10 +798,6 @@ export class EnhancedStorageEngineTransaction {
         continue;
       }
 
-      if (pendingDocumentState.state === "DELETED") {
-        continue;
-      }
-
       if (event.action === "INSERT") {
         if (pendingDocumentState.state === "INSERTED") {
           const preUpdateValue = event.value;
@@ -819,12 +816,33 @@ export class EnhancedStorageEngineTransaction {
           continue;
         }
 
-        if (
-          pendingDocumentState.state === "UPDATED" ||
-          pendingDocumentState.state === "UPSERTED"
-        ) {
+        if (pendingDocumentState.state === "UPDATED") {
+          if (isOptimistic) {
+            // TODO: warn the user that something might be wrong as they tried to perform an insert on an updated document.
+          }
+
+          const valueWithUpdates = {
+            ...event.value,
+            ...pendingDocumentState.delta,
+          };
+
+          eventsToPush.push({
+            action: "INSERT",
+            collectionName: event.collectionName,
+            key: event.key,
+            timestamp: event.timestamp,
+            value: valueWithUpdates,
+          });
+          continue;
+        }
+
+        if (pendingDocumentState.state === "UPDATE_POST_INSERT") {
+          if (isOptimistic) {
+            // TODO: warn the user that something might be wrong as they tried to perform an insert on an updated document.
+          }
+
           const preUpdateValue = event.value;
-          const delta = pendingDocumentState.delta;
+          const delta = pendingDocumentState.value;
           const postUpdateValue = { ...preUpdateValue, ...delta };
 
           eventsToPush.push({
@@ -838,16 +856,23 @@ export class EnhancedStorageEngineTransaction {
           });
           continue;
         }
-        continue;
+
+        if (pendingDocumentState.state === "DELETED") {
+          if (!isOptimistic) continue;
+          eventsToPush.push(event);
+        }
       }
 
       if (event.action === "UPDATE") {
-        if (pendingDocumentState.state === "INSERTED") {
+        if (
+          pendingDocumentState.state === "INSERTED" ||
+          pendingDocumentState.state === "UPDATE_POST_INSERT"
+        ) {
           const preUpdateValue = isOptimistic
             ? pendingDocumentState.value
             : event.postUpdateValue;
 
-          const delta = isOptimistic ? event.delta : pendingDocumentState.value;
+          const delta = isOptimistic ? event.delta : {};
 
           const postUpdateValue = { ...preUpdateValue, ...delta };
 
@@ -863,10 +888,7 @@ export class EnhancedStorageEngineTransaction {
           continue;
         }
 
-        if (
-          pendingDocumentState.state === "UPDATED" ||
-          pendingDocumentState.state === "UPSERTED"
-        ) {
+        if (pendingDocumentState.state === "UPDATED") {
           const preUpdateValue = isOptimistic
             ? pendingDocumentState.value
             : event.postUpdateValue;
@@ -894,7 +916,26 @@ export class EnhancedStorageEngineTransaction {
         continue;
       }
 
-      eventsToPush.push(event);
+      if (event.action === "DELETE") {
+        if (isOptimistic) {
+          eventsToPush.push(event);
+          continue;
+        }
+
+        if (
+          pendingDocumentState.state === "INSERTED" ||
+          pendingDocumentState.state === "UPDATE_POST_INSERT"
+        ) {
+          continue;
+        }
+
+        if (pendingDocumentState.state === "UPDATED") {
+          eventsToPush.push(event);
+          continue;
+        }
+
+        continue;
+      }
     }
 
     for (let event of eventsToPush) {
