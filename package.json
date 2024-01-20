@@ -33,6 +33,7 @@
     "@faker-js/faker": "8.3.1",
     "@vitest/coverage-v8": "1.2.0",
     "fake-indexeddb": "5.0.2",
+    "jsdom": "23.2.0",
     "tsup": "8.0.1",
     "typescript": "5.3.3",
     "vitest": "1.2.0"
