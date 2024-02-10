@@ -55,6 +55,8 @@ export class Query<TData extends StorableJSONValue = StorableJSONValue> {
 
   #resolvingPromise: Promise<void> | null = null;
 
+  #cdcBuffer: Array<CDCEvent> = [];
+
   constructor(config: QueryConfig) {
     this.#readDataFn = config.getResultFromReadTransaction;
     this.#option = config.option;
@@ -94,6 +96,10 @@ export class Query<TData extends StorableJSONValue = StorableJSONValue> {
         status: "success",
         data: this.#storageEngineResult!.get(this.#option.key) as any,
       });
+      if (this.#cdcBuffer.length > 0) {
+        this.updateResultFromCDCEvents(this.#cdcBuffer);
+        this.#cdcBuffer = [];
+      }
     } else {
       const resultData: any = [];
 
@@ -113,6 +119,11 @@ export class Query<TData extends StorableJSONValue = StorableJSONValue> {
         data: resultData as any,
         changes: changes,
       });
+
+      if (this.#cdcBuffer.length > 0) {
+        this.updateResultFromCDCEvents(this.#cdcBuffer);
+        this.#cdcBuffer = [];
+      }
     }
 
     this.#resolvingPromise = null;
@@ -183,10 +194,27 @@ export class Query<TData extends StorableJSONValue = StorableJSONValue> {
   }
 
   #handleCDCEventForCollection(event: CDCEvent): Array<QueryResultChange> {
+    const state = this.#state.get();
+
+    if (state.status === "error") {
+      return [];
+    }
+
+    if (state.status === "idle") {
+      console.warn("CDC event received when query is in idle state.");
+      return [];
+    }
+
+    if (state.status === "reading") {
+      this.#cdcBuffer.push(event);
+      return [];
+    }
+
     if (!this.#storageEngineResult) {
-      throw new Error(
-        "Cannot handle cdc event while storage engine hasn't returned a value. This is likely a bug please report."
+      console.error(
+        "Storage engine result is not set and the query is set to success state. This should not happen. Please report this issue."
       );
+      return [];
     }
 
     const changes: Array<QueryResultChange> = [];
