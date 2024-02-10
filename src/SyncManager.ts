@@ -451,4 +451,14 @@ export class SyncManager<
       this.#pullPromise = null;
     }
   }
+
+  async getPendingMutationsCount() {
+    const tx = this.#storageEngine.startTransaction("ALL", "readonly");
+
+    const allMutationsMap = await tx.queryAll<DatabaseMutation>(
+      INTERNAL_SCHEMA[MUTATION].name
+    );
+
+    return allMutationsMap.size;
+  }
 }

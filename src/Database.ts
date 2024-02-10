@@ -125,7 +125,7 @@ export class Database<
     this.#initializationPromise = null;
   }
 
-  async initialize() {
+  public async initialize() {
     await this.#initialize();
   }
 
@@ -149,15 +149,15 @@ export class Database<
     }
   }
 
-  get isInitialized() {
+  public get isInitialized() {
     return this.#isInitialized;
   }
 
-  get mutate(): Prettify<DatabaseMutators<TMutators>> {
+  public get mutate(): Prettify<DatabaseMutators<TMutators>> {
     return this.#databaseMutators;
   }
 
-  collection<
+  public collection<
     TCollectionIdentifer extends keyof TDatabaseSchema = keyof TDatabaseSchema
   >(collectionIdentifier: TCollectionIdentifer) {
     const collection = this.#schema[collectionIdentifier]!;
@@ -168,7 +168,7 @@ export class Database<
     >(collection, this.#queryEngine);
   }
 
-  async pull() {
+  public async pull() {
     await this.#initialize();
     return this.#syncManager.pull();
   }
@@ -202,7 +202,7 @@ export class Database<
     this.#batchReadTimeout = null;
   }
 
-  async batchRead<T>(
+  public async batchRead<T>(
     queryFn: (tx: ReadTransaction<TDatabaseSchema>) => Promise<T>
   ) {
     const { promise, resolve, reject } = resolver<T>();
@@ -272,11 +272,16 @@ export class Database<
     return dbEvents;
   }
 
-  subscribeToCDC(
+  public subscribeToCDC(
     callback: (events: DatabaseCDCEvents<TDatabaseSchema>) => void
   ) {
     return this.#storageEngine.subscribeToCDC(({ events }) => {
       callback(this.#convertStorageEngineCDCEventsToDatabaseCDCEvents(events));
     });
+  }
+
+  public async getPendingMutationsCount() {
+    await this.#initialize();
+    return this.#syncManager.getPendingMutationsCount();
   }
 }
