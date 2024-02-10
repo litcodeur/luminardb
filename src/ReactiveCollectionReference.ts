@@ -36,6 +36,11 @@ export class ReactiveCollectionReference<
         const query = getQuery();
 
         return query.subscribe((s) => {
+          if (s.status === "error") {
+            throw s.error;
+          }
+
+          if (s.status !== "success") return;
           callback(s.data);
         });
       },
