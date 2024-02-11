@@ -1,6 +1,7 @@
 import {
   InferMetadataTypeFromCollection,
   InferSchemaTypeFromCollection,
+  PullResponse,
 } from ".";
 import {
   DatabaseMutation,
@@ -283,5 +284,17 @@ export class Database<
   public async getPendingMutationsCount() {
     await this.#initialize();
     return this.#syncManager.getPendingMutationsCount();
+  }
+
+  /**
+   * This method allows you to apply changes directly to the database,
+   * bypassing the default mutators, and pull operations to allow for more complex scenarios.
+   * For ex: where you might want to apply changes that come in via websockets before the pull.
+   */
+  public async applyChange(
+    change: Partial<PullResponse<TDatabaseSchema>["change"]>
+  ) {
+    await this.#initialize();
+    return this.#syncManager.applyChange(change);
   }
 }

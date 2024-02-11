@@ -193,7 +193,7 @@ export class SyncManager<
     }
   }
 
-  async #applyRemoteChange(
+  public async applyChange(
     change: Partial<PullResponse<AnyDatabaseSchema>["change"]>,
     cursor?: Cursor,
     tx?: EnhancedStorageEngineTransaction
@@ -423,7 +423,7 @@ export class SyncManager<
               });
             }
 
-            await this.#applyRemoteChange(
+            await this.applyChange(
               result!.change,
               result!.cursor ?? undefined,
               tx
