@@ -141,10 +141,9 @@ export class Database<
       mutators: config.mutators,
       pullInterval: 30 * ONE_SECOND_IN_MS,
     });
-    this.#queryEngine = new QueryEngine(
-      this.#storageEngine,
-      this.#initializationPromise
-    );
+    this.#queryEngine = new QueryEngine(this.#storageEngine, async () => {
+      await this.#initialize();
+    });
     if (config.initialize) {
       void this.initialize();
     }

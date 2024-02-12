@@ -14,7 +14,7 @@ import { hashObject, isNotUndefined, resolver } from "./utils";
 export class QueryEngine {
   #storageEngine: StorageEngine;
   #cache = new Map<string, Query<any>>();
-  #initializationPromise: Promise<void> | null = null;
+  #initializationFn: () => Promise<unknown>;
 
   #queue = new Map<
     string,
@@ -66,10 +66,10 @@ export class QueryEngine {
 
   constructor(
     storageEngine: StorageEngine,
-    initializationPromise: Promise<void> | null
+    initializationFn: () => Promise<unknown>
   ) {
     this.#storageEngine = storageEngine;
-    this.#initializationPromise = initializationPromise;
+    this.#initializationFn = initializationFn;
   }
 
   handleCDCEvents(event: StorageEngineCDCEvent) {
@@ -132,9 +132,7 @@ export class QueryEngine {
       const query = new Query<TValue>({
         option,
         getResultFromReadTransaction: async () => {
-          if (this.#initializationPromise) {
-            await this.#initializationPromise;
-          }
+          await this.#initializationFn();
           return this.#getResultFromStorage(option);
         },
       });
@@ -161,10 +159,7 @@ export class QueryEngine {
       const query = new Query({
         option,
         getResultFromReadTransaction: async () => {
-          if (this.#initializationPromise) {
-            await this.#initializationPromise;
-          }
-
+          await this.#initializationFn();
           return this.#getResultFromStorage(option);
         },
       });
