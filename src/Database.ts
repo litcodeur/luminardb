@@ -49,9 +49,7 @@ export class Database<
     Object.keys(mutators).forEach((key) => {
       const typedKey = key as keyof typeof localMutators;
       localMutators[typedKey] = async (args: any) => {
-        if (this.#initializationPromise) {
-          await this.#initializationPromise;
-        }
+        await this.initialize();
 
         const storageEngineTransaction = this.#storageEngine.startTransaction(
           "ALL",
