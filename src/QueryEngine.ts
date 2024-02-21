@@ -30,7 +30,7 @@ export class QueryEngine {
 
   async #processQueue() {
     try {
-      const tx = this.#storageEngine.startTransaction("ALL", "readonly");
+      const tx = this.#storageEngine.startTransaction();
 
       for (let [_, { option, resolve }] of this.#queue) {
         if (isQueryOptionDocumentQueryOption(option)) {

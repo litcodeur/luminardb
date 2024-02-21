@@ -103,7 +103,7 @@ export class SyncManager<
   }
 
   async #getHasUnProcessedMutation() {
-    const tx = this.#storageEngine.startTransaction("ALL", "readonly");
+    const tx = this.#storageEngine.startTransaction();
 
     const allMutationsMap = await tx.queryAll<DatabaseMutation>(
       INTERNAL_SCHEMA[MUTATION].name
@@ -117,7 +117,7 @@ export class SyncManager<
   }
 
   async #getNextUnPushedMutation() {
-    const tx = this.#storageEngine.startTransaction("ALL", "readonly");
+    const tx = this.#storageEngine.startTransaction();
 
     const allMutationsMap = await tx.queryAll<DatabaseMutation>(
       INTERNAL_SCHEMA[MUTATION].name
@@ -155,8 +155,7 @@ export class SyncManager<
     storageEngineTransaction?: EnhancedStorageEngineTransaction
   ) {
     const tx =
-      storageEngineTransaction ??
-      this.#storageEngine.startTransaction("ALL", "readwrite");
+      storageEngineTransaction ?? this.#storageEngine.startTransaction();
     try {
       await tx.delete<DatabaseMutation>({
         collectionName: INTERNAL_SCHEMA[MUTATION].name,
@@ -199,7 +198,7 @@ export class SyncManager<
     tx?: EnhancedStorageEngineTransaction
   ) {
     const storageEngineTransaction =
-      tx ?? this.#storageEngine.startTransaction("ALL", "readwrite");
+      tx ?? this.#storageEngine.startTransaction();
 
     for (let collectionIdentifier in change) {
       const collection = this.#schema[collectionIdentifier as any];
@@ -260,7 +259,7 @@ export class SyncManager<
         remoteResolver.shouldRetry ?? true,
         {
           onRetry: async (retryCount) => {
-            const tx = this.#storageEngine.startTransaction("ALL", "readwrite");
+            const tx = this.#storageEngine.startTransaction();
             await tx.update<DatabaseMutation>({
               collectionName: INTERNAL_SCHEMA[MUTATION].name,
               key: mutation.id,
@@ -273,7 +272,7 @@ export class SyncManager<
         }
       );
 
-      const tx = this.#storageEngine.startTransaction("ALL", "readwrite");
+      const tx = this.#storageEngine.startTransaction();
 
       try {
         await tx.update<DatabaseMutation>({
@@ -294,7 +293,7 @@ export class SyncManager<
         tx.rollback();
       }
     } catch (error) {
-      const tx = this.#storageEngine.startTransaction("ALL", "readwrite");
+      const tx = this.#storageEngine.startTransaction();
       await tx.delete<DatabaseMutation>({
         collectionName: INTERNAL_SCHEMA[MUTATION].name,
         key: mutation.id,
@@ -389,7 +388,8 @@ export class SyncManager<
     let result: PullResponse<TDatabaseSchema> | undefined = undefined;
 
     try {
-      const cursor = await this.#storageEngine.queryByKey<CursroMeta>(
+      const tx = this.#storageEngine.startTransaction();
+      const cursor = await tx.queryByKey<CursroMeta>(
         INTERNAL_SCHEMA[META].name,
         "cursor"
       );
@@ -401,7 +401,7 @@ export class SyncManager<
       await this.#lockController.request(
         `pull:${this.#storageEngine.name}`,
         async () => {
-          const tx = this.#storageEngine.startTransaction("ALL", "readwrite");
+          const tx = this.#storageEngine.startTransaction();
           try {
             const allMutationsMap = await tx.queryAll<DatabaseMutation>(
               INTERNAL_SCHEMA[MUTATION].name
@@ -453,7 +453,7 @@ export class SyncManager<
   }
 
   async getPendingMutationsCount() {
-    const tx = this.#storageEngine.startTransaction("ALL", "readonly");
+    const tx = this.#storageEngine.startTransaction();
 
     const allMutationsMap = await tx.queryAll<DatabaseMutation>(
       INTERNAL_SCHEMA[MUTATION].name

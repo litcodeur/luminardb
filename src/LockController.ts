@@ -14,14 +14,16 @@ export function createIDBStorageEnginePersistentStorage(
 ): PersistentStorage {
   return {
     async getItem<T>(key: string) {
-      const documentResult = await engine.queryByKey(
+      const tx = engine.startTransaction();
+      const documentResult = await tx.queryByKey(
         INTERNAL_SCHEMA[META].name,
         key
       );
       return documentResult.get(key) as T | undefined;
     },
     async setItem<T>(key: string, value: T) {
-      const result = await engine.update({
+      const tx = engine.startTransaction();
+      const result = await tx.update({
         collectionName: INTERNAL_SCHEMA[META].name,
         key,
         value: value as any,
@@ -30,7 +32,8 @@ export function createIDBStorageEnginePersistentStorage(
       return result?.value as T;
     },
     async removeItem<T>(key: string) {
-      const result = await engine.delete({
+      const tx = engine.startTransaction();
+      const result = await tx.delete({
         collectionName: INTERNAL_SCHEMA[META].name,
         key,
       });

@@ -109,10 +109,7 @@ export interface StorageEngine<
 
   subscribeToCDC(subscriber: StorageEngineCDCEventSubscriber): () => void;
 
-  startTransaction(
-    collectionNames: Array<string> | "ALL",
-    mode: StorageEngineTransactionMode
-  ): EnhancedStorageEngineTransaction;
+  startTransaction(): EnhancedStorageEngineTransaction;
 
   get name(): string;
 }

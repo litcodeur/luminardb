@@ -51,10 +51,7 @@ export class Database<
       localMutators[typedKey] = async (args: any) => {
         await this.initialize();
 
-        const storageEngineTransaction = this.#storageEngine.startTransaction(
-          "ALL",
-          "readwrite"
-        );
+        const storageEngineTransaction = this.#storageEngine.startTransaction();
 
         const internalWriteTransaction = new InternalWriteTransaction(
           this.#schema,
@@ -180,7 +177,7 @@ export class Database<
 
   async #processBatchReadQueue() {
     const tx = new ReadTransaction(
-      this.#storageEngine.startTransaction("ALL", "readonly"),
+      this.#storageEngine.startTransaction(),
       this.#schema
     );
 
