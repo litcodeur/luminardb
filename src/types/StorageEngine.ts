@@ -92,17 +92,7 @@ export type StorageEngineCDCEventSubscriber = (
 
 export interface StorageEngine<
   TSchema extends AnyDatabaseSchema = AnyDatabaseSchema
-> extends Pick<
-    StorageEngineTransaction,
-    | "queryAll"
-    | "queryByCondition"
-    | "queryByKey"
-    | "insert"
-    | "update"
-    | "upsert"
-    | "delete"
-    | "clear"
-  > {
+> {
   initialize(): Promise<void>;
 
   get schema(): TSchema;
