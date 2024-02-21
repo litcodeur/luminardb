@@ -20,20 +20,8 @@ export function createIDBStorageEngine<
 >(config: { name: string; version: number; schema: TDatabaseSchema }) {
   validateSchema(config.schema);
 
-  let channelConstructor: (new (name: string) => BroadcastChannel) | undefined =
-    undefined;
-
-  if (typeof BroadcastChannel !== "undefined") {
-    channelConstructor = BroadcastChannel;
-  }
-
-  return new IDBStorageEngine<TDatabaseSchema>(
-    config.name,
-    config.version,
-    {
-      ...config.schema,
-      ...INTERNAL_SCHEMA,
-    },
-    channelConstructor
-  );
+  return new IDBStorageEngine<TDatabaseSchema>(config.name, config.version, {
+    ...config.schema,
+    ...INTERNAL_SCHEMA,
+  });
 }

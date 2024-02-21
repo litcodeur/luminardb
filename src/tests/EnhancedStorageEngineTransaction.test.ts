@@ -83,7 +83,7 @@ describe("EnhancedStorageEngineTransaction", () => {
   });
 
   async function getTransaction() {
-    return storageEngine.startTransaction("ALL", "readwrite");
+    return storageEngine.startTransaction();
   }
 
   async function insertTodo(todo: Todo) {
