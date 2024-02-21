@@ -49,18 +49,32 @@ export class InternalWriteTransaction<
 
     this.#initializationPromise = r.promise;
 
+    const mutations = await this.#tx.queryAll<DatabaseMutation>(
+      INTERNAL_SCHEMA[MUTATION].name
+    );
+
+    let nextMutationId = 1;
+
+    mutations.forEach(({ id }) => {
+      if (id >= nextMutationId) {
+        nextMutationId = id + 1;
+      }
+    });
+
     const mutation = {
+      id: nextMutationId,
       mutationArgs: this.#mutationArgs,
       mutationName: this.#mutationName,
       changes: [],
       collectionsAffected: [],
       isCompleted: false,
       isPushed: false,
-    } satisfies Omit<DatabaseMutation, "id">;
+    } satisfies DatabaseMutation;
 
     const { key } = await this.#tx.insert<DatabaseMutation>({
       collectionName: INTERNAL_SCHEMA[MUTATION].name,
       value: mutation as any,
+      key: mutation.id,
     });
 
     await this.#tx.update<DatabaseMutation>({

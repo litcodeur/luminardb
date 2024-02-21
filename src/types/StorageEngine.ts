@@ -25,11 +25,6 @@ export type InsertOptionWithKey<TValue extends StorableJSONObject> = {
   value: TValue;
 };
 
-export type InsertOptionWithoutKey<TValue extends StorableJSONObject> = {
-  collectionName: string;
-  value: TValue;
-};
-
 export interface StorageEngineTransaction {
   onComplete(callback: () => void): void;
 
@@ -56,7 +51,7 @@ export interface StorageEngineTransaction {
   ): Promise<StorageEngineQueryResult<TValue>>;
 
   insert<TValue extends StorableJSONObject = StorableJSONObject>(
-    option: InsertOptionWithKey<TValue> | InsertOptionWithoutKey<TValue>
+    option: InsertOptionWithKey<TValue>
   ): Promise<StorageEngineStoredValue<TValue>>;
 
   update<TValue extends StorableJSONObject = StorableJSONObject>(option: {

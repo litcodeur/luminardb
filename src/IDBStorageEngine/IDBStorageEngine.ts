@@ -1,9 +1,5 @@
 import { IDBPDatabase, openDB } from "idb";
-import {
-  AutoIncrementingCollection,
-  Collection,
-  IndexOptions,
-} from "../Collection";
+import { Collection, IndexOptions } from "../Collection";
 import { EnhancedStorageEngineTransaction } from "../EnhancedStorageEngineTransaction";
 import { AnyDatabaseSchema } from "../types/Database";
 import {
@@ -120,18 +116,6 @@ export class IDBStorageEngine<
     }
 
     collections.forEach((collection) => {
-      if (collection instanceof AutoIncrementingCollection) {
-        const typedCollection = collection as AutoIncrementingCollection<
-          any,
-          any
-        >;
-        db.createObjectStore(typedCollection.name, {
-          keyPath: "key",
-          autoIncrement: true,
-        });
-        return;
-      }
-
       const store = db.createObjectStore(collection.name);
 
       Object.entries<IndexOptions>(collection.metadata.indexes ?? {}).forEach(
@@ -226,6 +210,7 @@ export class IDBStorageEngine<
   get schema(): TSchema {
     return this.#schema;
   }
+
   get name() {
     return this.#name;
   }

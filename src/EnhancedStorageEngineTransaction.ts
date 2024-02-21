@@ -431,45 +431,13 @@ export class EnhancedStorageEngineTransaction {
     return;
   }
 
-  async insert<TValue extends StorableJSONObject = StorableJSONObject>(
-    option:
-      | {
-          collectionName: string;
-          key: StorageEngineValidKey;
-          value: TValue;
-          emitCDCEvent?: boolean;
-          skipOptimisticDataCheck?: boolean;
-        }
-      | {
-          collectionName: string;
-          value: TValue;
-          emitCDCEvent?: boolean;
-          skipOptimisticDataCheck?: boolean;
-        }
-  ): Promise<StorageEngineStoredValue<TValue>> {
-    if (isUndefined((option as any).key)) {
-      const typedOption = option;
-
-      const { collectionName, value, emitCDCEvent = true } = typedOption;
-
-      const { key } = await this.#tx.insert({
-        collectionName,
-        value,
-      });
-
-      if (emitCDCEvent) {
-        await this.#handlePushCDC({
-          action: "INSERT",
-          collectionName,
-          key,
-          value: value,
-          timestamp: getIncrementingTimestamp(),
-        });
-      }
-
-      return { key, value };
-    }
-
+  async insert<TValue extends StorableJSONObject = StorableJSONObject>(option: {
+    collectionName: string;
+    key: StorageEngineValidKey;
+    value: TValue;
+    emitCDCEvent?: boolean;
+    skipOptimisticDataCheck?: boolean;
+  }): Promise<StorageEngineStoredValue<TValue>> {
     const typedOption = option as {
       collectionName: string;
       value: TValue;

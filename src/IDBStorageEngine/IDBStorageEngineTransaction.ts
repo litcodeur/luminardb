@@ -2,7 +2,6 @@ import { IDBPDatabase, IDBPIndex, IDBPObjectStore, IDBPTransaction } from "idb";
 import { Condition } from "../Condition";
 import {
   InsertOptionWithKey,
-  InsertOptionWithoutKey,
   StorageEngineQueryResult,
   StorageEngineStoredValue,
   StorageEngineTransaction,
@@ -10,7 +9,6 @@ import {
   StorageEngineValidKey,
 } from "../types/StorageEngine";
 import { StorableJSONObject } from "../types/types";
-import { isUndefined } from "../utils";
 
 export class IDBStorageEngineTransaction implements StorageEngineTransaction {
   #tx: IDBPTransaction<unknown, string[], StorageEngineTransactionMode> | null =
@@ -216,24 +214,9 @@ export class IDBStorageEngineTransaction implements StorageEngineTransaction {
   }
 
   async insert<TValue extends StorableJSONObject = StorableJSONObject>(
-    option: InsertOptionWithKey<TValue> | InsertOptionWithoutKey<TValue>
+    option: InsertOptionWithKey<TValue>
   ): Promise<StorageEngineStoredValue<TValue>> {
     const tx = await this.#getTX();
-
-    if (isUndefined((option as InsertOptionWithKey<TValue>).key)) {
-      const typedOption = option as InsertOptionWithoutKey<TValue>;
-
-      const { collectionName, value } = typedOption;
-      const store = tx.objectStore(collectionName);
-
-      if (typeof store.add === "undefined") {
-        throw new Error("Invalid collection name");
-      }
-
-      const key = (await store.add({ value })) as StorageEngineValidKey;
-
-      return { key, value };
-    }
 
     const typedOption = option as InsertOptionWithKey<TValue>;
 

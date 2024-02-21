@@ -1,8 +1,4 @@
-import {
-  AutoIncrementingCollection,
-  Collection,
-  CollectionMetadata,
-} from "./Collection";
+import { Collection, CollectionMetadata } from "./Collection";
 import { StorageEngineValidKey } from "./types/StorageEngine";
 import { StorableJSONObject } from "./types/types";
 
@@ -65,7 +61,7 @@ export type DatabaseMutation = {
 const databaseMutationCollectionMetadata =
   {} satisfies CollectionMetadata<DatabaseMutation>;
 
-const databaseMutationsCollection = new AutoIncrementingCollection<
+const databaseMutationsCollection = new Collection<
   DatabaseMutation,
   typeof databaseMutationCollectionMetadata
 >("__mutations", databaseMutationCollectionMetadata);

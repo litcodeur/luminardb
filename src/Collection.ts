@@ -48,12 +48,3 @@ export class Collection<
     return this.#metadata;
   }
 }
-
-export class AutoIncrementingCollection<
-  TCollectionSchema extends StorableJSONObject = StorableJSONObject,
-  TCollectionMetadata extends CollectionMetadata<TCollectionSchema> = CollectionMetadata<TCollectionSchema>
-> extends Collection<TCollectionSchema, TCollectionMetadata> {
-  constructor(name: string, metadata: TCollectionMetadata) {
-    super(name, metadata);
-  }
-}

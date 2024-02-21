@@ -326,7 +326,8 @@ describe("EnhancedStorageEngineTransaction", () => {
       const idb = await getIDB();
 
       const mutationId = ++id;
-      let mutation: Omit<DatabaseMutation, "id"> = {
+      let mutation: DatabaseMutation = {
+        id: mutationId,
         changes: [
           {
             id: `${mutationId}-${getIncrementingTimestamp()}`,
@@ -344,7 +345,11 @@ describe("EnhancedStorageEngineTransaction", () => {
         isPushed: false,
       };
 
-      await idb.add(INTERNAL_SCHEMA[MUTATION].name, { value: mutation });
+      await idb.add(
+        INTERNAL_SCHEMA[MUTATION].name,
+        { value: mutation, key: mutation.id },
+        mutation.id
+      );
 
       return todo;
     }
@@ -358,7 +363,8 @@ describe("EnhancedStorageEngineTransaction", () => {
       const mutationId = ++id;
 
       const updatedTodo = { ...currentValue, ...delta };
-      let mutation: Omit<DatabaseMutation, "id"> = {
+      let mutation: DatabaseMutation = {
+        id: mutationId,
         changes: [
           {
             id: `${mutationId}-${getIncrementingTimestamp()}`,
@@ -378,7 +384,11 @@ describe("EnhancedStorageEngineTransaction", () => {
         isPushed: false,
       };
 
-      await idb.add(INTERNAL_SCHEMA[MUTATION].name, { value: mutation });
+      await idb.add(
+        INTERNAL_SCHEMA[MUTATION].name,
+        { value: mutation, key: mutation.id },
+        mutation.id
+      );
 
       return updatedTodo;
     }
@@ -388,7 +398,8 @@ describe("EnhancedStorageEngineTransaction", () => {
 
       const mutationId = ++id;
 
-      let mutation: Omit<DatabaseMutation, "id"> = {
+      let mutation: DatabaseMutation = {
+        id: mutationId,
         changes: [
           {
             id: `${mutationId}-${getIncrementingTimestamp()}`,
@@ -406,7 +417,14 @@ describe("EnhancedStorageEngineTransaction", () => {
         isPushed: false,
       };
 
-      await idb.add(INTERNAL_SCHEMA[MUTATION].name, { value: mutation });
+      await idb.add(
+        INTERNAL_SCHEMA[MUTATION].name,
+        {
+          value: mutation,
+          key: mutation.id,
+        },
+        mutation.id
+      );
     }
 
     afterEach(() => {
@@ -845,6 +863,7 @@ describe("EnhancedStorageEngineTransaction", () => {
       const mutationId = ++id;
 
       const mutation = {
+        id: mutationId,
         changes: [
           {
             action: "INSERT",
@@ -860,11 +879,12 @@ describe("EnhancedStorageEngineTransaction", () => {
         mutationName: "insertTodo",
         mutationArgs: {},
         isPushed: false,
-      } satisfies Omit<DatabaseMutation, "id">;
+      } satisfies DatabaseMutation;
 
       const { key } = await tx.insert({
         collectionName: INTERNAL_SCHEMA[MUTATION].name,
         value: mutation,
+        key: mutation.id,
       });
 
       await tx.update({
@@ -885,7 +905,9 @@ describe("EnhancedStorageEngineTransaction", () => {
     ): Promise<Todo> {
       const updatedTodo = { ...currentValue, ...delta };
 
+      const mutationId = ++id;
       const mutation = {
+        id: mutationId,
         changes: [
           {
             action: "UPDATE",
@@ -903,11 +925,12 @@ describe("EnhancedStorageEngineTransaction", () => {
         mutationName: "updateTodo",
         mutationArgs: {},
         isPushed: false,
-      } satisfies Omit<DatabaseMutation, "id">;
+      } satisfies DatabaseMutation;
 
       const { key } = await tx.insert({
         collectionName: INTERNAL_SCHEMA[MUTATION].name,
         value: mutation,
+        key: mutation.id,
       });
 
       await tx.update({
@@ -925,7 +948,9 @@ describe("EnhancedStorageEngineTransaction", () => {
       tx: EnhancedStorageEngineTransaction,
       todo: Todo
     ) {
+      const mutationId = ++id;
       const mutation = {
+        id: mutationId,
         changes: [
           {
             action: "DELETE",
@@ -941,11 +966,12 @@ describe("EnhancedStorageEngineTransaction", () => {
         mutationName: "deleteTodo",
         mutationArgs: {},
         isPushed: false,
-      } satisfies Omit<DatabaseMutation, "id">;
+      } satisfies DatabaseMutation;
 
       const { key } = await tx.insert({
         collectionName: INTERNAL_SCHEMA[MUTATION].name,
         value: mutation,
+        key: mutation.id,
       });
 
       await tx.update({
