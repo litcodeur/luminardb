@@ -5,7 +5,6 @@ import {
   IndexOptions,
 } from "../Collection";
 import { Condition } from "../Condition";
-import { INTERNAL_SCHEMA_COLLECTION_NAMES } from "../InternalSchema";
 import { EnhancedStorageEngineTransaction } from "../EnhancedStorageEngineTransaction";
 import { AnyDatabaseSchema } from "../types/Database";
 import {
@@ -16,7 +15,6 @@ import {
   StorageEngineCDCEventSubscriber,
   StorageEngineQueryResult,
   StorageEngineStoredValue,
-  StorageEngineTransactionMode,
   StorageEngineValidKey,
 } from "../types/StorageEngine";
 import { StorableJSONObject } from "../types/types";
@@ -40,23 +38,15 @@ export class IDBStorageEngine<
   #schema: TSchema;
   #idb: IDBPDatabase | null = null;
   #allCollectionNames: Set<string> = new Set();
-
+  #transactionQueue: Array<{ resolve: () => void }> = [];
   #subscribers = new Set<StorageEngineCDCEventSubscriber>();
-  #channel?: BroadcastChannel;
+  #channel: BroadcastChannel;
 
-  constructor(
-    name: string,
-    version: number,
-    schema: TSchema,
-    ChannelConstructor?: new (name: string) => BroadcastChannel | undefined
-  ) {
+  constructor(name: string, version: number, schema: TSchema) {
     this.#name = name;
     this.#version = version;
     this.#schema = schema;
-
-    if (ChannelConstructor) {
-      this.#channel = new ChannelConstructor(`IDBStorageEngine:${name}`);
-    }
+    this.#channel = new BroadcastChannel(`IDBStorageEngine:${name}:${version}`);
   }
 
   #getIDB() {
@@ -66,38 +56,33 @@ export class IDBStorageEngine<
     return this.#idb;
   }
 
-  startTransaction(
-    collectionNames: string[] | "ALL",
-    mode: StorageEngineTransactionMode
-  ) {
-    let collectionNamesForTransaction: Array<string> = [];
+  startTransaction() {
+    let collectionNamesForTransaction = Array.from(this.#allCollectionNames);
 
-    if (collectionNames === "ALL") {
-      collectionNamesForTransaction = Array.from(this.#allCollectionNames);
-    } else {
-      const missingInternalCollectionNames = [];
+    const { promise, resolve } = resolver();
 
-      for (let name of INTERNAL_SCHEMA_COLLECTION_NAMES) {
-        if (!collectionNames.includes(name)) {
-          missingInternalCollectionNames.push(name);
-        }
-      }
-
-      collectionNamesForTransaction = [
-        ...collectionNames,
-        ...missingInternalCollectionNames,
-      ];
-    }
+    this.#transactionQueue.push({ resolve });
 
     const idbTX = new IDBStorageEngineTransaction(
       this.#getIDB(),
       collectionNamesForTransaction,
-      mode
+      "readwrite",
+      promise
     );
 
     const tx = new EnhancedStorageEngineTransaction(idbTX);
 
-    tx.onComplete((events) => this.#notifyCDCSubscribers({ events }));
+    tx.onComplete((events) => {
+      this.#notifyCDCSubscribers({ events });
+      this.#transactionQueue.shift();
+      if (this.#transactionQueue.length > 0) {
+        this.#transactionQueue[0]!.resolve();
+      }
+    });
+
+    if (this.#transactionQueue.length === 1) {
+      resolve();
+    }
 
     return tx;
   }
@@ -254,7 +239,7 @@ export class IDBStorageEngine<
     key: StorageEngineValidKey
   ): Promise<StorageEngineQueryResult<TValue>> {
     await this.initialize();
-    const tx = this.startTransaction([collectionName], "readonly");
+    const tx = this.startTransaction();
     return await tx.queryByKey<TValue>(collectionName, key);
   }
 
@@ -265,7 +250,7 @@ export class IDBStorageEngine<
     condition: Condition
   ): Promise<StorageEngineQueryResult<TValue>> {
     await this.initialize();
-    const tx = this.startTransaction([collectionName], "readonly");
+    const tx = this.startTransaction();
     return await tx.queryByCondition<TValue>(collectionName, condition);
   }
 
@@ -273,7 +258,7 @@ export class IDBStorageEngine<
     collectionName: string
   ): Promise<StorageEngineQueryResult<TValue>> {
     await this.initialize();
-    const tx = this.startTransaction([collectionName], "readonly");
+    const tx = this.startTransaction();
     return await tx.queryAll<TValue>(collectionName);
   }
 
@@ -281,7 +266,7 @@ export class IDBStorageEngine<
     option: InsertOptionWithKey<TValue> | InsertOptionWithoutKey<TValue>
   ): Promise<StorageEngineStoredValue<TValue>> {
     await this.initialize();
-    const tx = this.startTransaction([option.collectionName], "readwrite");
+    const tx = this.startTransaction();
     return await tx.insert<TValue>(option);
   }
 
@@ -292,7 +277,7 @@ export class IDBStorageEngine<
     emitCDCEvent?: boolean | undefined;
   }): Promise<StorageEngineStoredValue<TValue> | null> {
     await this.initialize();
-    const tx = this.startTransaction([option.collectionName], "readwrite");
+    const tx = this.startTransaction();
     return await tx.update<TValue>(option);
   }
 
@@ -302,7 +287,7 @@ export class IDBStorageEngine<
     emitCDCEvent?: boolean | undefined;
   }): Promise<StorageEngineStoredValue<TValue> | null> {
     await this.initialize();
-    const tx = this.startTransaction([option.collectionName], "readwrite");
+    const tx = this.startTransaction();
     return await tx.delete<TValue>(option);
   }
 
@@ -313,7 +298,7 @@ export class IDBStorageEngine<
     emitCDCEvent?: boolean | undefined;
   }): Promise<StorageEngineStoredValue<TValue>> {
     await this.initialize();
-    const tx = this.startTransaction([option.collectionName], "readwrite");
+    const tx = this.startTransaction();
     return await tx.upsert<TValue>(option);
   }
 
@@ -322,7 +307,7 @@ export class IDBStorageEngine<
     emitCDCEvent?: boolean | undefined;
   }): Promise<void> {
     await this.initialize();
-    const tx = this.startTransaction([option.collectionName], "readwrite");
+    const tx = this.startTransaction();
     return await tx.clear(option);
   }
 
