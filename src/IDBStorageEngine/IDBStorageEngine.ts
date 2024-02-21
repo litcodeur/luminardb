@@ -10,6 +10,23 @@ import {
 import { resolver } from "../utils";
 import { IDBStorageEngineTransaction } from "./IDBStorageEngineTransaction";
 
+export type Log =
+  | {
+      type: "SET";
+      collectionName: string;
+      key: string;
+      value: any;
+    }
+  | {
+      type: "DELETE";
+      collectionName: string;
+      key: string;
+    }
+  | {
+      type: "CLEAR";
+      collectionName: string;
+    };
+
 export type BroadcastChannelMessages = {
   type: "StorageEngineCDCEvent";
   data: StorageEngineCDCEvent;
@@ -30,6 +47,7 @@ export class IDBStorageEngine<
   #transactionQueue: Array<{ resolve: () => void }> = [];
   #subscribers = new Set<StorageEngineCDCEventSubscriber>();
   #channel: BroadcastChannel;
+  #bufferedLogs: Array<Array<Log>> = [];
 
   constructor(name: string, version: number, schema: TSchema) {
     this.#name = name;
@@ -45,7 +63,9 @@ export class IDBStorageEngine<
     return this.#idb;
   }
 
-  startTransaction() {
+  startTransaction(
+    durability: "memory" | "disk" = "disk"
+  ): EnhancedStorageEngineTransaction {
     let collectionNamesForTransaction = Array.from(this.#allCollectionNames);
 
     const { promise, resolve } = resolver();
@@ -56,8 +76,16 @@ export class IDBStorageEngine<
       this.#getIDB(),
       collectionNamesForTransaction,
       "readwrite",
-      promise
+      promise,
+      this.#bufferedLogs,
+      durability
     );
+
+    if (durability === "memory") {
+      idbTX.onComplete((logs) => {
+        this.#bufferedLogs.push(logs);
+      });
+    }
 
     const tx = new EnhancedStorageEngineTransaction(idbTX);
 

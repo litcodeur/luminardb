@@ -466,7 +466,7 @@ export class EnhancedStorageEngineTransaction {
       );
     }
 
-    await this.#tx.insert({ collectionName, key, value });
+    const { ts } = await this.#tx.insert({ collectionName, key, value });
 
     if (emitCDCEvent) {
       await this.#handlePushCDC({
@@ -478,7 +478,7 @@ export class EnhancedStorageEngineTransaction {
       });
     }
 
-    return { key, value };
+    return { key, value, ts };
   }
 
   async update<TValue extends StorableJSONObject = StorableJSONObject>(option: {
@@ -519,7 +519,7 @@ export class EnhancedStorageEngineTransaction {
 
     const valueToInsert = { ...currentValue, ...value };
 
-    await this.#tx.update({
+    const result = await this.#tx.update({
       collectionName,
       key,
       value: valueToInsert,
@@ -537,7 +537,7 @@ export class EnhancedStorageEngineTransaction {
       });
     }
 
-    return { key, value: valueToInsert };
+    return { key, value: valueToInsert, ts: result!.ts };
   }
 
   async delete<TValue extends StorableJSONObject = StorableJSONObject>(option: {
@@ -545,7 +545,7 @@ export class EnhancedStorageEngineTransaction {
     key: StorageEngineValidKey;
     emitCDCEvent?: boolean;
     skipOptimisticDataCheck?: boolean;
-  }): Promise<StorageEngineStoredValue<TValue> | null> {
+  }): Promise<Omit<StorageEngineStoredValue<TValue>, "ts"> | null> {
     const {
       collectionName,
       key,

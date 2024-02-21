@@ -9,6 +9,7 @@ import {
   StorageEngineValidKey,
 } from "../types/StorageEngine";
 import { StorableJSONObject } from "../types/types";
+import { Log } from "./IDBStorageEngine";
 
 export class IDBStorageEngineTransaction implements StorageEngineTransaction {
   #tx: IDBPTransaction<unknown, string[], StorageEngineTransactionMode> | null =
@@ -21,8 +22,20 @@ export class IDBStorageEngineTransaction implements StorageEngineTransaction {
     queuePromise: Promise<void>;
   };
 
-  #onCompleteCallbacks: Set<() => void> = new Set();
+  #onCompleteCallbacks: Set<(transactionLogs: Array<Log>) => void> = new Set();
   #onErrorCallbacks: Set<(error: Event) => void> = new Set();
+  #normalizedBufferedLogs: Array<Log> = [];
+  #durability: "memory" | "disk" = "disk";
+  #txLogs: Array<Log> = [];
+
+  public logStuff() {
+    console.log(
+      "logStuff",
+      this.#normalizedBufferedLogs,
+      this.#txLogs,
+      this.#durability
+    );
+  }
 
   async #getTX() {
     if (this.#tx) {
@@ -40,7 +53,7 @@ export class IDBStorageEngineTransaction implements StorageEngineTransaction {
     this.#tx.oncomplete = () => {
       this.#isActive = false;
       for (let callback of this.#onCompleteCallbacks) {
-        callback();
+        callback(this.#txLogs);
       }
     };
 
@@ -56,12 +69,16 @@ export class IDBStorageEngineTransaction implements StorageEngineTransaction {
     idb: IDBPDatabase,
     collectionNames: Array<string>,
     mode: StorageEngineTransactionMode,
-    queuePromise: Promise<void>
+    queuePromise: Promise<void>,
+    bufferedLogs: Array<Array<Log>>,
+    durability: "memory" | "disk" = "disk"
   ) {
     this.#txOptions = { idb, collectionNames, mode, queuePromise };
+    this.#normalizedBufferedLogs = bufferedLogs.flat();
+    this.#durability = durability;
   }
 
-  onComplete(callback: () => void): void {
+  onComplete(callback: (logs: Array<Log>) => void): void {
     this.#onCompleteCallbacks.add(callback);
   }
 
@@ -228,9 +245,11 @@ export class IDBStorageEngineTransaction implements StorageEngineTransaction {
       throw new Error("Invalid collection name");
     }
 
+    const ts = Date.now();
+
     await store.add({ key, value }, key);
 
-    return { key, value };
+    return { key, value, ts };
   }
 
   async update<TValue extends StorableJSONObject = StorableJSONObject>(option: {
@@ -258,15 +277,17 @@ export class IDBStorageEngineTransaction implements StorageEngineTransaction {
 
     const putKey = store.autoIncrement ? undefined : key;
 
-    await store.put({ key, value: valueToInsert }, putKey);
+    const ts = Date.now();
 
-    return { key, value: valueToInsert };
+    await store.put({ key, value: valueToInsert, ts }, putKey);
+
+    return { key, value: valueToInsert, ts };
   }
 
   async delete<TValue extends StorableJSONObject = StorableJSONObject>(option: {
     collectionName: string;
     key: StorageEngineValidKey;
-  }): Promise<StorageEngineStoredValue<TValue> | null> {
+  }): Promise<Omit<StorageEngineStoredValue<TValue>, "ts"> | null> {
     const tx = await this.#getTX();
 
     const { collectionName, key } = option;

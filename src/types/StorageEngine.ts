@@ -13,6 +13,7 @@ export type StorageEngineStoredValue<
 > = {
   key: StorageEngineValidKey;
   value: T;
+  ts: number;
 };
 
 export type StorageEngineQueryResult<
@@ -63,7 +64,7 @@ export interface StorageEngineTransaction {
   delete<TValue extends StorableJSONObject = StorableJSONObject>(option: {
     collectionName: string;
     key: StorageEngineValidKey;
-  }): Promise<StorageEngineStoredValue<TValue> | null>;
+  }): Promise<Omit<StorageEngineStoredValue<TValue>, "ts"> | null>;
 
   upsert<TValue extends StorableJSONObject = StorableJSONObject>(option: {
     collectionName: string;
@@ -94,7 +95,9 @@ export interface StorageEngine<
 
   subscribeToCDC(subscriber: StorageEngineCDCEventSubscriber): () => void;
 
-  startTransaction(): EnhancedStorageEngineTransaction;
+  startTransaction(
+    durability?: "memory" | "disk"
+  ): EnhancedStorageEngineTransaction;
 
   get name(): string;
 }
